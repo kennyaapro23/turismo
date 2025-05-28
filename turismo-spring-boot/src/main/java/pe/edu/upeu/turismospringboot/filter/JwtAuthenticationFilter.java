@@ -26,10 +26,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
-    // ✅ Lista de rutas públicas (no requieren token)
     private static final List<String> EXCLUDED_PATHS = List.of(
-            "/auth",          // login y registro
-            "/general"        // rutas públicas como /general/emprendimiento
+            "/auth", "/general"
     );
 
     @Override
@@ -38,7 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        // 🔓 Si es una ruta pública, no se aplica JWT
+        // No filtrar si está en lista blanca
         if (isExcluded(path)) {
             filterChain.doFilter(request, response);
             return;
@@ -51,18 +49,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         final String username = jwtService.getUsernameFromToken(token);
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        if (username == null || SecurityContextHolder.getContext().getAuthentication() != null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            if (jwtService.isTokenValid(token, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+        // Validar token y establecer contexto de autenticación
+        if (jwtService.isTokenValid(token, userDetails)) {
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    null,
+                    userDetails.getAuthorities() // debe ser ["ROLE_USUARIO"] o similar
+            );
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         filterChain.doFilter(request, response);
@@ -76,7 +78,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    // ✅ Verifica si la ruta debe ser excluida del filtro
     private boolean isExcluded(String path) {
         return EXCLUDED_PATHS.stream().anyMatch(path::startsWith);
     }

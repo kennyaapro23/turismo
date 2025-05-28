@@ -23,16 +23,13 @@ public class JwtService {
     public String getToken(UserDetails user) {
         Map<String, Object> extraClaims = new HashMap<>();
 
-        // Suponiendo que solo tenés un rol (si tenés más de uno, podés ponerlos en una lista)
-        String role = user.getAuthorities().stream()
-                .findFirst()
-                .map(auth -> auth.getAuthority())
-                .orElse("ROLE_USUARIO");
+        // Agregar authorities correctamente como lista de roles
+        extraClaims.put("authorities", user.getAuthorities().stream()
+                .map(auth -> auth.getAuthority().replace("ROLE_", ""))  // 👈 quita el "ROLE_" al guardar en el JWT
+                .toList());
 
-        extraClaims.put("role", role);
-
-        if(user instanceof Usuario){
-            Usuario usuario = (Usuario) user;
+        // Agregar idUsuario si es necesario
+        if (user instanceof Usuario usuario) {
             extraClaims.put("idUsuario", usuario.getIdUsuario());
         }
 
@@ -44,6 +41,8 @@ public class JwtService {
                 .builder()
                 .setClaims(extraClaims)
                 .setSubject(user.getUsername())
+                .claim("rol", user.getAuthorities().stream()
+                        .findFirst().get().getAuthority().replace("ROLE_", ""))
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis()+1000*60*24))
                 .signWith(getKey(), SignatureAlgorithm.HS256)

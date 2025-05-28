@@ -24,6 +24,9 @@ public class ReservaServiceImpl implements ReservaService {
 
     @Override
     public ReservaResponseDTO crearReserva(CrearReservaRequest request, Usuario usuarioAutenticado) {
+
+
+
         Emprendimiento emprendimiento = emprendimientoRepository.findById(request.getIdEmprendimiento())
                 .orElseThrow(() -> new RuntimeException("Emprendimiento no encontrado"));
 
@@ -37,8 +40,13 @@ public class ReservaServiceImpl implements ReservaService {
 
         List<ReservaDetalle> detalles = request.getDetalles().stream()
                 .map(detalleRequest -> {
-                    ServicioTuristico servicio = servicioTuristicoRepository.findById(detalleRequest.getIdServicioTuristico())
-                            .orElseThrow(() -> new RuntimeException("Servicio turístico no encontrado"));
+                    Long idServicio = detalleRequest.getIdServicioTuristico();
+                    if (idServicio == null) {
+                        throw new IllegalArgumentException("El ID del servicio turístico no puede ser null");
+                    }
+
+                    ServicioTuristico servicio = servicioTuristicoRepository.findById(idServicio)
+                            .orElseThrow(() -> new RuntimeException("Servicio turístico con ID " + idServicio + " no encontrado"));
 
                     ReservaDetalle detalle = new ReservaDetalle();
                     detalle.setDescripcion(servicio.getNombre());
@@ -59,8 +67,8 @@ public class ReservaServiceImpl implements ReservaService {
 
     @Override
     public String obtenerNumeroEmprendedorPorIdEmprendimiento(Long idEmprendimiento){
-        Emprendimiento emprendimiento = emprendimientoRepository.findById(idEmprendimiento).orElseThrow(() -> new RuntimeException("Emprendimiento con id"+idEmprendimiento+"no encontrado"));
-        String numeroDeTelefono = emprendimiento.getUsuario().getPersona().getTelefono();
-        return numeroDeTelefono;
+        Emprendimiento emprendimiento = emprendimientoRepository.findById(idEmprendimiento)
+                .orElseThrow(() -> new RuntimeException("Emprendimiento con ID " + idEmprendimiento + " no encontrado"));
+        return emprendimiento.getUsuario().getPersona().getTelefono();
     }
 }

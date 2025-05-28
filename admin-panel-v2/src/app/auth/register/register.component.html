@@ -1,0 +1,96 @@
+<div class="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-slate-900 text-white">
+  <!-- Lado izquierdo: Registro -->
+  <div class="flex items-center justify-center px-6 py-12">
+    <div class="w-full max-w-md bg-white text-slate-900 rounded-xl shadow-xl p-8 space-y-6">
+      <!-- Logo / Título -->
+      <div class="text-center">
+        <img
+          src="https://img.freepik.com/vector-premium/logotipo-tienda-linea-comercio-electronico_1199645-37307.jpg?semt=ais_hybrid&w=740"
+          class="h-12 mx-auto"
+          alt="Logo"
+        />
+        <h2 class="text-2xl font-bold mt-4">Crear una cuenta</h2>
+        <p class="text-sm text-slate-500 mt-1">Empieza tu experiencia con nosotros 🚀</p>
+      </div>
+
+      <!-- Formulario -->
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate class="space-y-5">
+        <!-- Usuario -->
+        <div>
+          <label for="userName" class="block text-sm font-medium text-slate-600 mb-1">Usuario</label>
+          <input
+            type="text"
+            id="userName"
+            formControlName="userName"
+            placeholder="Tu usuario"
+            [ngClass]="{ 'border-red-500': submitted && registerForm.get('userName')?.invalid }"
+            class="w-full px-4 py-2 border border-slate-300 rounded-md shadow-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <div *ngIf="submitted && registerForm.get('userName')?.invalid" class="text-red-500 text-sm mt-1">
+            El usuario es obligatorio.
+          </div>
+        </div>
+
+        <!-- Contraseña -->
+        <div>
+          <label for="password" class="block text-sm font-medium text-slate-600 mb-1">Contraseña</label>
+          <input
+            type="password"
+            id="password"
+            formControlName="password"
+            placeholder="••••••••"
+            [ngClass]="{ 'border-red-500': submitted && registerForm.get('password')?.invalid }"
+            class="w-full px-4 py-2 border border-slate-300 rounded-md shadow-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <div *ngIf="submitted && registerForm.get('password')?.invalid" class="text-red-500 text-sm mt-1">
+            La contraseña es obligatoria.
+          </div>
+        </div>
+
+        <!-- Confirmar contraseña -->
+        <div>
+          <label for="confirmPassword" class="block text-sm font-medium text-slate-600 mb-1">Confirmar contraseña</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            formControlName="confirmPassword"
+            placeholder="••••••••"
+            [ngClass]="{ 'border-red-500': submitted && registerForm.get('confirmPassword')?.invalid }"
+            class="w-full px-4 py-2 border border-slate-300 rounded-md shadow-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <div *ngIf="submitted && registerForm.get('confirmPassword')?.invalid" class="text-red-500 text-sm mt-1">
+            Debes confirmar tu contraseña.
+          </div>
+        </div>
+
+        <!-- Mensaje de error -->
+        <div *ngIf="errorMessage" class="text-red-600 bg-red-100 border border-red-300 rounded px-4 py-2 text-sm">
+          {{ errorMessage }}
+        </div>
+
+        <!-- Botón -->
+        <button
+          type="submit"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-md shadow transition"
+        >
+          Registrarse
+        </button>
+      </form>
+
+      <!-- Ya tienes cuenta -->
+      <div class="text-center text-sm text-slate-600 pt-2">
+        ¿Ya tienes cuenta?
+        <a routerLink="/auth/login" class="text-indigo-600 hover:underline font-medium">Iniciar sesión</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lado derecho: imagen decorativa e-commerce -->
+  <div class="hidden md:block">
+    <img
+      src="https://media.istockphoto.com/id/1179101263/es/vector/compras-online-con-smartphone-concepto-de-comercio-electr%C3%B3nico-ilustraci%C3%B3n-vectorial.jpg?s=612x612&w=0&k=20&c=FLkeurbRUoysl4RlKPOXktQsAH-6LQKpS-JseJtUHlU="
+      alt="E-commerce"
+      class="h-full w-full object-cover"
+    />
+  </div>
+</div>
