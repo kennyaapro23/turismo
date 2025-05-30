@@ -3,94 +3,99 @@ package pe.edu.upeu.turismospringboot.service.auth;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import pe.edu.upeu.turismospringboot.model.entity.Usuario;
 
 import java.security.Key;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class JwtService {
 
-    private static final String SECRET_KEY="586E3272357538782F413F4428472B4B6250655368566B597033733676397924";
+    private static final String SECRET_KEY = "586E3272357538782F413F4428472B4B6250655368566B597033733676397924";
+    private Key key;
 
-    public String getToken(UserDetails user) {
-        Map<String, Object> extraClaims = new HashMap<>();
+    private final long EXPIRATION_MS = 1000 * 60 * 60 * 4; // 4 horas
 
-        // Agregar authorities correctamente como lista de roles
-        extraClaims.put("authorities", user.getAuthorities().stream()
-                .map(auth -> auth.getAuthority().replace("ROLE_", ""))  // 👈 quita el "ROLE_" al guardar en el JWT
-                .toList());
-
-        // Agregar idUsuario si es necesario
-        if (user instanceof Usuario usuario) {
-            extraClaims.put("idUsuario", usuario.getIdUsuario());
-        }
-
-        return getToken(extraClaims, user);
+    @PostConstruct
+    public void init() {
+        byte[] keyBytes = SECRET_KEY.getBytes(); // ← 💡 ahora usamos directamente la constante
+        this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    private String getToken(Map<String,Object> extraClaims, UserDetails user) {
-        return Jwts
-                .builder()
-                .setClaims(extraClaims)
-                .setSubject(user.getUsername())
-                .claim("rol", user.getAuthorities().stream()
-                        .findFirst().get().getAuthority().replace("ROLE_", ""))
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis()+1000*60*24))
-                .signWith(getKey(), SignatureAlgorithm.HS256)
+    // ✅ Generar token desde Usuario
+    public String getToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+
+        // ✅ authorities
+        List<String> authorities = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+        claims.put("authorities", authorities);
+
+        // ✅ idUsuario si es instancia de Usuario
+        if (userDetails instanceof Usuario usuario) {
+            claims.put("idUsuario", usuario.getIdUsuario());
+            claims.put("role", usuario.getRol().getNombre().replace("ROLE_", "")); // e.g., "USUARIO"
+        }
+
+        return buildToken(claims, userDetails.getUsername());
+    }
+
+    // ✅ Construcción final del token
+    private String buildToken(Map<String, Object> claims, String subject) {
+        Date now = new Date();
+        Date expiration = new Date(now.getTime() + EXPIRATION_MS);
+
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(now)
+                .setExpiration(expiration)
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    private Key getKey() {
-        byte[] keyBytes=Decoders.BASE64.decode(SECRET_KEY);
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
-
-    public String getUsernameFromToken(String token) {
-        return getClaim(token, Claims::getSubject);
-    }
-
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username=getUsernameFromToken(token);
-        return (username.equals(userDetails.getUsername())&& !isTokenExpired(token));
-    }
-
-    private Claims getAllClaims(String token)
-    {
-        return Jwts
-                .parserBuilder()
-                .setSigningKey(getKey())
+    // ✅ Extraer claims
+    public Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(this.key)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
 
-    public <T> T getClaim(String token, Function<Claims,T> claimsResolver)
-    {
-        final Claims claims=getAllClaims(token);
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
-    private Date getExpiration(String token)
-    {
-        return getClaim(token, Claims::getExpiration);
+    public String getUsernameFromToken(String token) {
+        return extractClaim(token, Claims::getSubject);
     }
 
-    private boolean isTokenExpired(String token)
-    {
-        return getExpiration(token).before(new Date());
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
     }
 
-    public String getRoleFromToken(String token) {
-        // Extraer el claim "role" del token
-        return getClaim(token, claims -> claims.get("role", String.class));
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        String username = getUsernameFromToken(token);
+        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+    }
+
+    private boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
+
+    // ✅ Extraer authorities desde el token
+    public List<String> getAuthoritiesFromToken(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("authorities", List.class);
     }
 }

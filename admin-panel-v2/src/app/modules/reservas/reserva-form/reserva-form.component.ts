@@ -2,23 +2,22 @@ import { Component, OnInit } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
-  ReactiveFormsModule,
-  Validators
+  Validators,
+  ReactiveFormsModule
 } from '@angular/forms';
-import { ActivatedRoute, RouterModule, Router } from '@angular/router';
-import { ReservaService } from '../../../core/services/reserva.service';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 
-
+import { ReservaService } from '../../../core/services/reserva.service';
+import { CrearReservaRequest } from '../../../core/models/reserva.model';
 import Swal from 'sweetalert2';
-import {CrearReservaRequest} from '../../../core/models/reserva.model';
 
 @Component({
-  standalone: true,
   selector: 'app-reserva-form',
-  templateUrl: './reserva-form.component.html',
-  styleUrls: ['./reserva-form.component.scss'],
+  standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  templateUrl: './reserva-form.component.html',
+  styleUrls: ['./reserva-form.component.scss']
 })
 export class ReservaFormComponent implements OnInit {
   form!: FormGroup;
@@ -36,35 +35,48 @@ export class ReservaFormComponent implements OnInit {
     this.form = this.fb.group({
       fecha: ['', Validators.required],
       cantidadPersonas: [1, [Validators.required, Validators.min(1)]],
+      observaciones: ['']
     });
   }
 
   reservar(): void {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      console.warn('Formulario inválido');
+      return;
+    }
 
-    const data: CrearReservaRequest = {
-      ...this.form.value,
-      emprendimientoId: this.emprendimientoId,
+    const fecha = this.form.value.fecha;
+    const payload: CrearReservaRequest = {
+      idEmprendimiento: this.emprendimientoId,
+      fechaHoraInicio: `${fecha}T14:00:00`,
+      fechaHoraFin: `${fecha}T11:00:00`,
+      detalles: [
+        {
+          idServicioTuristico: 1,
+          cantidad: this.form.value.cantidadPersonas,
+          observaciones: this.form.value.observaciones || ''
+        }
+      ]
     };
 
-    this.reservaService.crearReserva(data).subscribe({
+    this.reservaService.crearReserva(payload).subscribe({
       next: (res) => {
         Swal.fire({
           icon: 'success',
           title: 'Reserva exitosa',
           text: `Reservaste en: ${res.nombreEmprendimiento}`,
-          confirmButtonText: 'OK',
+          confirmButtonText: 'OK'
         }).then(() => {
-          this.router.navigate(['/reservas']); // o donde desees redirigir
+          this.router.navigate(['/reservas']);
         });
       },
-      error: (err) => {
+      error: () => {
         Swal.fire({
           icon: 'error',
           title: 'Error',
-          text: 'No se pudo completar la reserva.',
+          text: 'No se pudo completar la reserva.'
         });
-      },
+      }
     });
   }
 }

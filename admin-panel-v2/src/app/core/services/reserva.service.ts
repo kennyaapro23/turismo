@@ -4,7 +4,7 @@ import {
   CrearReservaRequest,
   ReservaResponseDTO
 } from '../models/reserva.model';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
 
 @Injectable({ providedIn: 'root' })
@@ -13,37 +13,36 @@ export class ReservaService {
 
   constructor(private http: HttpClient) {}
 
-  /**
-   * Extrae el rol actual desde el token (formato sin "ROLE_")
-   */
+  /** 🔐 Extrae el rol actual desde el token (normalizado) */
   private getRol(): string | null {
     const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('⚠️ Token no encontrado');
-      return null;
-    }
+    if (!token) return null;
 
     try {
       const payload: any = jwtDecode(token);
-      const rawRole: string = payload.rol || payload.role || null;
-
-      if (!rawRole) {
-        console.warn('⚠️ El rol no está presente en el token');
-        return null;
-      }
-
-      const normalized = rawRole.toUpperCase(); // por seguridad
-      console.info('🔐 Rol detectado desde token:', normalized);
-      return normalized;
+      const role = payload.role || payload.rol || payload.authorities?.[0] || '';
+      return role.replace('ROLE_', '').toUpperCase();
     } catch (error) {
-      console.error('❌ Error al decodificar el token:', error);
+      console.error('❌ Error al extraer el rol:', error);
       return null;
     }
   }
 
-  /**
-   * Determina el endpoint base según el rol limpio
-   */
+  /** 🧑‍💼 Extrae el ID de usuario desde el token */
+  private getUserIdFromToken(): number | null {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+
+    try {
+      const payload: any = jwtDecode(token);
+      return payload.idUsuario || null;
+    } catch (error) {
+      console.error('❌ Error al extraer el idUsuario:', error);
+      return null;
+    }
+  }
+
+  /** 📌 Determina el endpoint base según el rol */
   private getEndpointByRol(): string {
     const rol = this.getRol();
 
@@ -55,38 +54,38 @@ export class ReservaService {
       case 'EMPRENDEDOR':
         return `${this.baseUrl}/emprendedor/reserva`;
       default:
-        console.warn('⚠️ Rol desconocido, usando fallback usuario/reserva');
+        console.warn('⚠️ Rol no reconocido, usando endpoint de usuario');
         return `${this.baseUrl}/usuario/reserva`;
     }
   }
 
-  /**
-   * Crear una reserva (POST)
-   */
+  /** 🟢 Crear nueva reserva */
   crearReserva(data: CrearReservaRequest): Observable<ReservaResponseDTO> {
-    return this.http.post<ReservaResponseDTO>(this.getEndpointByRol(), data);
+    return this.http.post<ReservaResponseDTO>(`${this.baseUrl}/usuario/reserva`, data);
   }
 
-  /**
-   * Obtener número del emprendedor por ID de emprendimiento
-   */
+  /** 📞 Obtener teléfono del emprendedor por idEmprendimiento */
   getTelefonoEmprendedor(idEmprendimiento: number): Observable<string> {
-    return this.http.get(`${this.getEndpointByRol()}/telefono/${idEmprendimiento}`, {
+    return this.http.get(`${this.baseUrl}/usuario/reserva/telefono/${idEmprendimiento}`, {
       responseType: 'text'
     });
   }
 
-  /**
-   * Obtener reservas del usuario autenticado
-   */
-  getMisReservas(): Observable<ReservaResponseDTO[]> {
-    return this.http.get<ReservaResponseDTO[]>(`${this.getEndpointByRol()}/mis-reservas`);
+  /** 📄 Obtener reservas por usuario usando idUsuario desde el token */
+  getReservasPorUsuario(): Observable<ReservaResponseDTO[]> {
+    const idUsuario = this.getUserIdFromToken();
+    if (!idUsuario) {
+      console.warn('⚠️ ID del usuario no encontrado en el token');
+      return throwError(() => new Error('ID del usuario no encontrado'));
+    }
+
+    const url = `${this.baseUrl}/usuario/reserva/idUsuario/${idUsuario}`;
+    return this.http.get<ReservaResponseDTO[]>(url);
   }
 
-  /**
-   * Cancelar una reserva por ID
-   */
-  cancelarReserva(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.getEndpointByRol()}/${id}`);
+  /** ❌ Cancelar una reserva por ID (DELETE) */
+  cancelarReserva(idReserva: number): Observable<void> {
+    const url = `${this.baseUrl}/usuario/reserva/${idReserva}`;
+    return this.http.delete<void>(url);
   }
 }

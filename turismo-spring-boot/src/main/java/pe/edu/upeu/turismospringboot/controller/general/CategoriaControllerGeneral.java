@@ -16,7 +16,6 @@ import java.util.List;
 @RequestMapping("/general/categoria")
 public class CategoriaControllerGeneral {
     @Autowired
-
     private CategoriaService categoriaService;
 
     @GetMapping

@@ -41,7 +41,7 @@ export class AuthService {
       const payload: any = jwtDecode(token);
       console.log('🟢 Payload:', payload); // 👈 Agrega esto otra vez
 
-      const rawRole = payload.rol || payload.role || payload.authorities?.[0];
+      const rawRole = payload.role || payload.authorities?.[0];
       if (!rawRole) return null;
 
       return rawRole.toUpperCase();

@@ -3,6 +3,7 @@ package pe.edu.upeu.turismospringboot.service.auth;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,11 @@ import pe.edu.upeu.turismospringboot.repository.PersonaRepository;
 import pe.edu.upeu.turismospringboot.repository.RolRepository;
 import pe.edu.upeu.turismospringboot.repository.UsuarioRepository;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -29,13 +35,29 @@ public class AuthService {
     private final RolRepository rolRepository;
 
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
-        UserDetails user= usuarioRepository.findByUsername(request.getUsername()).orElseThrow();
-        String token=jwtService.getToken(user);
+        // ✅ Autenticar
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+        );
+
+        Usuario userEntity = usuarioRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        UserDetails userDetails = userEntity; // Usuario implementa UserDetails
+
+        // ✅ Construir claims extra
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("idUsuario", userEntity.getIdUsuario());
+        extraClaims.put("authorities", userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList()));
+
+        // ✅ Generar token con claims
+        String token = jwtService.getToken(userDetails);
+
         return AuthResponse.builder()
                 .token(token)
                 .build();
-
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -53,8 +75,7 @@ public class AuthService {
         persona.setDireccion(request.getDireccion());
         persona.setCorreoElectronico(request.getCorreoElectronico());
         persona.setFechaNacimiento(request.getFechaNacimiento());
-
-        personaRepository.save(persona); // persistimos la persona
+        personaRepository.save(persona);
 
         // Crear usuario
         Usuario usuario = new Usuario();
@@ -63,13 +84,22 @@ public class AuthService {
         usuario.setEstado(EstadoCuenta.ACTIVO);
         usuario.setRol(rol);
         usuario.setPersona(persona);
-
         usuarioRepository.save(usuario);
 
-        // Generar token
+        // ✅ UserDetails
+        UserDetails userDetails = usuario;
+
+        // ✅ Claims extra
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("idUsuario", usuario.getIdUsuario());
+        extraClaims.put("authorities", userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList()));
+
+        String token = jwtService.getToken(userDetails);
+
         return AuthResponse.builder()
-                .token(jwtService.getToken(usuario))
+                .token(token)
                 .build();
     }
-
 }

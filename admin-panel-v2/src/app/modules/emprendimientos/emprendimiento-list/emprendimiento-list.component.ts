@@ -21,7 +21,7 @@ export class EmprendimientoListComponent implements OnInit {
 
   ngOnInit(): void {
     this.emprendimientoService.getAll().subscribe((data) => {
-      console.log('DATA:', data);
+      console.log('DATA Emprendimiento cargado:', data);
       this.emprendimientos = data;
     });
   }

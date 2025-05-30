@@ -20,7 +20,7 @@ export class RoleGuard implements CanActivate {
 
     try {
       const payload: any = jwtDecode(token);
-      const userRole = payload.rol || payload.role || payload.authorities?.[0]; // ✅ uso flexible
+      const userRole = payload.role || payload.authorities?.[0]; // ✅ correcto
 
       if (!userRole) {
         console.warn('⚠️ No se encontró ningún rol en el token.');
@@ -28,7 +28,7 @@ export class RoleGuard implements CanActivate {
         return false;
       }
 
-      const normalizedRole = userRole.replace('ROLE_', '').toUpperCase(); // 🔁 limpia y normaliza
+      const normalizedRole = userRole.replace('ROLE_', '').toUpperCase();
       const expectedRoles: string[] = route.data['expectedRoles']?.map((r: string) => r.toUpperCase()) || [];
 
       if (expectedRoles.includes(normalizedRole)) {
@@ -46,3 +46,4 @@ export class RoleGuard implements CanActivate {
     }
   }
 }
+

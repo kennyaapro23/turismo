@@ -17,6 +17,7 @@ import java.util.List;
 @RequestMapping("/general/emprendimiento")
 public class EmprendimientoControllerGeneral {
     @Autowired
+
     private EmprendimientoService emprendimientoService;
 
     @GetMapping

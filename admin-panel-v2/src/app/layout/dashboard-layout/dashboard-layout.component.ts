@@ -1,5 +1,5 @@
 import { Component, Inject, PLATFORM_ID } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import {Router, RouterLink, RouterModule, RouterOutlet} from '@angular/router';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { jwtDecode } from 'jwt-decode';
 
@@ -8,7 +8,7 @@ import { jwtDecode } from 'jwt-decode';
   selector: 'app-dashboard-layout',
   templateUrl: './dashboard-layout.component.html',
   styleUrls: [],
-  imports: [CommonModule, RouterLink, RouterOutlet]
+  imports: [CommonModule, RouterLink, RouterOutlet, RouterModule],
 })
 export class DashboardLayoutComponent {
   mobileNavOpen = false;
@@ -16,10 +16,13 @@ export class DashboardLayoutComponent {
   private isBrowser: boolean;
   rol: string | null = null;
 
-  constructor(@Inject(PLATFORM_ID) platformId: Object, private router: Router) {
+  constructor(
+    @Inject(PLATFORM_ID) platformId: Object,
+    private router: Router
+  ) {
     this.isBrowser = isPlatformBrowser(platformId);
     if (this.isBrowser) {
-      this.setRol(); // ✅ solo si estamos en el navegador
+      this.setRol();
     }
   }
 
@@ -32,8 +35,13 @@ export class DashboardLayoutComponent {
 
     try {
       const payload: any = jwtDecode(token);
-      this.rol = (payload.rol || payload.role || '').toUpperCase(); // ✅ usa 'rol', normaliza
-      console.log('✅ Rol detectado desde token:', this.rol);
+      const rawrole = payload?.role;
+      if (rawrole) {
+        this.rol = rawrole.replace('ROLE_', '').toUpperCase();
+        console.log('✅ Rol detectado desde token:', this.rol);
+      } else {
+        console.warn('⚠️ Token no contiene "role"');
+      }
     } catch (e) {
       console.error('❌ Error decodificando token:', e);
     }

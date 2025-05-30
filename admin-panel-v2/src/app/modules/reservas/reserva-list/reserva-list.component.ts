@@ -1,47 +1,65 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ReservaService } from '../../../core/services/reserva.service';
+import { ReservaResponseDTO } from '../../../core/models/reserva.model';
+import Swal from 'sweetalert2';
+import {CommonModule} from '@angular/common';
+import {RouterModule} from '@angular/router';
 
-import { CommonModule } from '@angular/common';
-import {ReservaService} from '../../../core/services/reserva.service';
-import {CrearReservaRequest} from '../../../core/models/reserva.model';
 
 @Component({
-  selector: 'app-reserva-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  selector: 'app-reserva-list',
   templateUrl: './reserva-list.component.html',
-  styleUrls: ['./reserva-list.component.scss']
+  styleUrls: ['./reserva-list.component.scss'],
+  imports: [CommonModule, RouterModule]
+
 })
 export class ReservaListComponent implements OnInit {
-  form!: FormGroup;
-  emprendimientoId!: number;
+  reservas: ReservaResponseDTO[] = [];
+  cargando = true;
 
-  constructor(
-    private fb: FormBuilder,
-    private route: ActivatedRoute,
-    private reservaService: ReservaService
-  ) {}
+  constructor(private reservaService: ReservaService) {}
 
   ngOnInit(): void {
-    this.emprendimientoId = +this.route.snapshot.paramMap.get('id')!;
-    this.form = this.fb.group({
-      fecha: ['', Validators.required],
-      cantidadPersonas: [1, [Validators.required, Validators.min(1)]]
+    this.cargarReservas();
+  }
+
+  cargarReservas(): void {
+    this.cargando = true;
+    this.reservaService.getReservasPorUsuario().subscribe({
+      next: (res) => {
+        console.log('Reservas cargadas:', this.reservas);
+        this.reservas = res;
+        this.cargando = false;
+      },
+      error: (err) => {
+        console.error('Error al cargar reservas:', err);
+        this.cargando = false;
+        Swal.fire('Error', 'No se pudieron cargar las reservas', 'error');
+      }
     });
   }
 
-  reservar(): void {
-    if (this.form.invalid) return;
-
-    const dto: CrearReservaRequest = {
-      emprendimientoId: this.emprendimientoId,
-      ...this.form.value
-    };
-
-    this.reservaService.crearReserva(dto).subscribe({
-      next: res => alert(`✅ Reserva realizada para ${res.nombreEmprendimiento}`),
-      error: err => alert('❌ Error al reservar')
+  cancelarReserva(id: number): void {
+    Swal.fire({
+      title: '¿Cancelar esta reserva?',
+      text: 'Esta acción no se puede deshacer.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, cancelar',
+      cancelButtonText: 'No',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.reservaService.cancelarReserva(id).subscribe({
+          next: () => {
+            Swal.fire('Cancelado', 'Tu reserva fue cancelada.', 'success');
+            this.cargarReservas(); // Recargar lista
+          },
+          error: () => {
+            Swal.fire('Error', 'No se pudo cancelar la reserva', 'error');
+          }
+        });
+      }
     });
   }
 }

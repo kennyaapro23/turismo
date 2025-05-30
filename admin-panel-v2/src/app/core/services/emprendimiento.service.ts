@@ -11,33 +11,38 @@ export class EmprendimientoService {
   constructor(private http: HttpClient) {}
 
   /**
-   * Extrae el rol desde el token JWT (formato actual: sin "ROLE_")
+   * Extrae el rol desde el token JWT
    */
-  private getRol(): string | null {
+  private getRol(): string {
     const token = localStorage.getItem('token');
     if (!token) {
       console.warn('⚠️ Token no encontrado en localStorage');
-      return null;
+      return 'USUARIO'; // Rol por defecto
     }
 
     try {
       const payload: any = jwtDecode(token);
-      const role = payload.rol || payload.role || null; // 👈 usa "rol" como en backend actual
-      console.log('🔐 Rol detectado desde token:', role);
-      return role?.toUpperCase() ?? null;
+      const role = (payload.role || '').toUpperCase();
+
+      if (!role) {
+        console.warn('⚠️ Token válido pero sin "role" definido');
+        return 'USUARIO';
+      }
+
+      return role;
     } catch (error) {
       console.error('❌ Error al decodificar el token:', error);
-      return null;
+      return 'USUARIO'; // Retornar algo seguro
     }
   }
 
   /**
-   * Determina la URL del endpoint según el rol (actual)
+   * Determina la URL del endpoint según el rol actual
    */
   private getEndpointByRol(): string {
-    const rol = this.getRol();
+    const role = this.getRol();
 
-    switch (rol) {
+    switch (role) {
       case 'ADMIN':
         return `${this.baseUrl}/admin/emprendimiento`;
       case 'EMPRENDEDOR':
@@ -45,7 +50,7 @@ export class EmprendimientoService {
       case 'USUARIO':
         return `${this.baseUrl}/general/emprendimiento`;
       default:
-        console.warn('⚠️ Rol desconocido o no autenticado:', rol);
+        console.warn('⚠️ Rol no reconocido, usando endpoint público:', role);
         return `${this.baseUrl}/general/emprendimiento`;
     }
   }
@@ -55,7 +60,7 @@ export class EmprendimientoService {
    */
   getAll(): Observable<Emprendimiento[]> {
     const endpoint = this.getEndpointByRol();
-    console.log('🌐 Usando endpoint:', endpoint);
+    console.log('🌐 Consultando emprendimientos desde:', endpoint);
     return this.http.get<Emprendimiento[]>(endpoint);
   }
 }
